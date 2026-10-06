@@ -1,0 +1,6 @@
+/build/
+/dist/
+/lab*/bin/
+/.vs/
+/.idea/
+*.user
