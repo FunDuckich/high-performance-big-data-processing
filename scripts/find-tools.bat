@@ -1,26 +1,26 @@
 @echo off
 set "LAB_VS_ROOT="
-set "LAB_CMAKE="
+set "LAB_MSBUILD="
 set "LAB_VSWHERE=%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe"
 if not exist "%LAB_VSWHERE%" (
-    echo Visual Studio Build Tools 2022 with C++ tools is required to build.
+    echo Не найдены средства Visual Studio 2017 или новее.
+    echo Для сборки установите набор разработки классических приложений на C++ и Windows SDK.
+    echo Готовые exe можно запускать без установки компилятора.
     exit /b 1
 )
 pushd "%ProgramFiles(x86)%\Microsoft Visual Studio\Installer"
 if errorlevel 1 exit /b 1
-for /f "delims=" %%I in ('vswhere.exe -latest -version "[17.0,18.0)" -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath') do set "LAB_VS_ROOT=%%I"
+for /f "delims=" %%I in ('vswhere.exe -latest -version "[15.0,)" -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 Microsoft.Component.MSBuild -property installationPath') do set "LAB_VS_ROOT=%%I"
 popd
 if not defined LAB_VS_ROOT (
-    echo MSVC C++ tools for Visual Studio 2022 were not found.
+    echo Не найден набор инструментов C++ для Visual Studio 2017 или новее.
+    echo Добавьте MSVC x64/x86 и Windows SDK через Visual Studio Installer.
     exit /b 1
 )
-set "LAB_CMAKE=%LAB_VS_ROOT%\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe"
-if not exist "%LAB_CMAKE%" (
-    set "LAB_CMAKE="
-    for %%I in (cmake.exe) do set "LAB_CMAKE=%%~$PATH:I"
-)
-if not defined LAB_CMAKE (
-    echo CMake was not found. Install the C++ CMake tools component or add CMake to PATH.
+set "LAB_MSBUILD=%LAB_VS_ROOT%\MSBuild\Current\Bin\MSBuild.exe"
+if not exist "%LAB_MSBUILD%" set "LAB_MSBUILD=%LAB_VS_ROOT%\MSBuild\15.0\Bin\MSBuild.exe"
+if not exist "%LAB_MSBUILD%" (
+    echo Не найден MSBuild. Восстановите инструменты сборки через Visual Studio Installer.
     exit /b 1
 )
 exit /b 0

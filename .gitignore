@@ -1,6 +1,12 @@
 /build/
 /dist/
-/lab*/bin/
+/lab*/bin/*
+!/lab*/bin/Release/
+/lab*/bin/Release/*
+!/lab*/bin/Release/lab*.exe
+/lab*/obj/
+/tests/bin/
+/tests/obj/
 /.vs/
 /.idea/
 *.user

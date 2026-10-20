@@ -3,3 +3,8 @@
 *.cpp text eol=lf
 *.hpp text eol=lf
 *.md text eol=lf
+*.props text eol=lf
+*.vcxproj text eol=crlf
+*.sln text eol=crlf
+.gitignore text eol=lf
+.gitattributes text eol=lf

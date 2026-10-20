@@ -1,48 +1,55 @@
-#include "experiment.hpp"
-#include "series.hpp"
+#include "../common/support.hpp"
 #include <ppl.h>
-#include <array>
+#include <algorithm>
+#include <cmath>
+#include <vector>
 
-int main(int argc, char** argv) {
-    return lab::entry([&] {
-        const auto parsed = lab::parse_options(argc, argv, 50000000);
-        if (!parsed) { return; }
-        const auto options = *parsed;
-        lab::banner("Лабораторная III", 8, options, 50000000);
-        std::cout << "Подготовка исходной последовательности...\n" << std::flush;
-        std::vector<double> input(options.size);
-        for (std::size_t n = 0; n < options.size; ++n) { input[n] = lab::sort_value(n); }
-        std::vector<double> reference(options.size);
-        std::vector<double> work(options.size);
-        std::array<std::vector<double>, 3> times;
-        for (std::size_t repetition = 0; repetition < options.repeats; ++repetition) {
-            std::cout << "Измерение " << repetition + 1 << '/' << options.repeats << ": std::sort...\n" << std::flush;
-            reference = input;
-            times[0].push_back(lab::elapsed([&] { std::sort(reference.begin(), reference.end()); }));
-            if (!std::is_sorted(reference.begin(), reference.end())) {
-                throw std::runtime_error("std::sort: нарушен порядок сортировки.");
-            }
-            for (int step = 0; step < 2; ++step) {
-                const int method = repetition % 2 == 0 ? step + 1 : 2 - step;
-                work = input;
-                std::cout << "Измерение " << repetition + 1 << '/' << options.repeats << ": "
-                    << (method == 1 ? "parallel_sort" : "parallel_buffered_sort") << "...\n" << std::flush;
-                times[method].push_back(lab::elapsed([&] {
-                    if (method == 1) { concurrency::parallel_sort(work.begin(), work.end()); }
-                    else { concurrency::parallel_buffered_sort(work.begin(), work.end()); }
-                }));
-                if (!std::is_sorted(work.begin(), work.end()) || work != reference) {
-                    throw std::runtime_error("Параллельная сортировка не совпадает с std::sort.");
-                }
-            }
-        }
-        const double baseline = lab::median(times[0]);
-        lab::table_header();
-        lab::row("std::sort", "vector", baseline, baseline);
-        lab::row("parallel_sort", "vector", lab::median(times[1]), baseline);
-        lab::row("parallel_buffered_sort", "vector", lab::median(times[2]), baseline);
-        lab::table_border();
-        std::cout << "Минимум: " << std::fixed << std::setprecision(12) << reference.front()
+constexpr int N = 50000000;
+
+double value(int n) {
+    double root = std::sqrt(static_cast<double>(n));
+    return root / (1.0 + root) * std::sin(static_cast<double>(n));
+}
+
+int main() {
+    lab::Console console;
+    try {
+        lab::heading("Лабораторная III", 8);
+        std::cout << "Количество значений: " << N << "\nПодготовка данных..." << std::endl;
+        std::vector<double> input(N);
+        for (int n = 0; n < N; ++n) input[n] = value(n);
+        std::vector<double> reference(input), work(input);
+        std::cout << "std::sort..." << std::endl;
+        lab::Timer timer;
+        std::sort(reference.begin(), reference.end());
+        double baseline = timer.seconds();
+        bool correct = std::is_sorted(reference.begin(), reference.end());
+        std::vector<lab::Result> results{{"std::sort", "vector", baseline, baseline, correct}};
+        work = input;
+        std::cout << "parallel_sort..." << std::endl;
+        timer.reset();
+        concurrency::parallel_sort(work.begin(), work.end());
+        double parallel_sort_time = timer.seconds();
+        bool parallel_sort_correct = work == reference;
+        correct &= parallel_sort_correct;
+        results.push_back({"parallel_sort", "vector", parallel_sort_time, baseline, parallel_sort_correct});
+        work = input;
+        std::cout << "parallel_buffered_sort..." << std::endl;
+        timer.reset();
+        concurrency::parallel_buffered_sort(work.begin(), work.end());
+        double parallel_buffered_sort_time = timer.seconds();
+        bool parallel_buffered_sort_correct = work == reference;
+        correct &= parallel_buffered_sort_correct;
+        results.push_back({"parallel_buffered_sort", "vector", parallel_buffered_sort_time, baseline, parallel_buffered_sort_correct});
+        lab::print_results(results);
+        std::cout << "Минимум: " << std::setprecision(12) << reference.front()
             << "; максимум: " << reference.back() << '\n';
-    });
+        return correct ? 0 : 1;
+    } catch (const std::bad_alloc&) {
+        std::cerr << "Недостаточно памяти. Уменьшите размер в начале main.cpp и пересоберите программу.\n";
+        return 1;
+    } catch (const std::exception& error) {
+        std::cerr << "Ошибка: " << error.what() << '\n';
+        return 1;
+    }
 }
